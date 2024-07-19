@@ -7,6 +7,8 @@ class IPPortDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("config")
         self.setModal(True)
+        self.setWindowFlags(self.windowFlags() | Qt.WindowStaysOnTopHint)  # 设置窗口总是处于顶端
+
 
         self.init_widget()
         self.init_layout()
@@ -17,6 +19,7 @@ class IPPortDialog(QDialog):
         self.ip_label.setFixedWidth(30)
         self.ip_label.setAlignment(Qt.AlignRight)
         self.ip_input = QLineEdit("127.0.0.1")
+        # self.ip_input = QLineEdit("192.168.120.78")
         self.port_label = QLabel(" Port:")
         self.port_label.setFixedWidth(30)
         self.port_label.setAlignment(Qt.AlignRight)

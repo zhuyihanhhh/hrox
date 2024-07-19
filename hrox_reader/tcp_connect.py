@@ -1,7 +1,7 @@
 import socket
 
 
-class ReviewClient():
+class ReviewClient:
     def __init__(self, ip, port):
         super().__init__()
         self.ip = ip

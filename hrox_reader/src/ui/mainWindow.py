@@ -1,6 +1,6 @@
 from PySide2.QtCore import Qt
 from PySide2.QtWidgets import QWidget, QLabel, QLineEdit, QPushButton, QTableWidget, QAbstractItemView, QHeaderView, \
-    QComboBox, QProgressBar, QVBoxLayout, QHBoxLayout
+    QComboBox, QProgressBar, QVBoxLayout, QHBoxLayout, QCheckBox
 
 
 class Convert_Window(QWidget):
@@ -70,6 +70,10 @@ class Convert_Window(QWidget):
 
         self.ip_config = QPushButton("config")
 
+
+        self.send_button = QPushButton("Send")
+
+        self.listen_checkbox = QCheckBox("Listen")
     def init_layout(self):
         main_layout = QVBoxLayout()
 
@@ -90,6 +94,8 @@ class Convert_Window(QWidget):
         button_layout.addWidget(self.drives_combobox)
         button_layout.addWidget(self.get_path_button)
         button_layout.addWidget(self.execute_button)
+        button_layout.addWidget(self.send_button)
+        button_layout.addWidget(self.listen_checkbox)
         button_layout.addLayout(interrupt_layout)
 
         h_layout = QHBoxLayout()

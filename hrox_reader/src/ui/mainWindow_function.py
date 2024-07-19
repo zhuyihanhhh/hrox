@@ -1,17 +1,20 @@
-import csv
+import json
 import os
 import re
+import socket
 import subprocess
 import sys
 import time
 from datetime import datetime
 
+from PySide2.QtCore import Qt
 from PySide2.QtWidgets import QTableWidgetItem, QMessageBox, QApplication, QFileDialog, QMenu, QAction, QDialog
 
 from tcp_connect import ReviewClient as RC
 from ui.utils.CopyWorker import CopyWorker as copy
 from ui.utils.info_widget import NotificationWidget as info
 from ui.utils.ip_dialog import IPPortDialog as ip_dialog
+from ui.utils.responses_listenner import ServerResponseListener as rl, FileSender
 
 
 class mainWindow_function():
@@ -26,23 +29,32 @@ class mainWindow_function():
             sys.exit()
 
         self.tcp_client = RC(ip, port)
+        # self.listener = rl(self.tcp_client.stream)
+
         self.window = mainWindow
         self.window.function_instance = self
         self.connect_signals()
+        # self.show_drive_space()
 
     def show_info(self, title, message):
         new_notification = info(title, message)
 
     def connect_signals(self):
+
+        # self.listener.update_line_signal.connect(self.on_update_line)
+        # self.listener.finished_signal.connect(self.on_finished)
+
         self.window.get_path_button.clicked.connect(self.set_paths)
-        self.window.execute_button.clicked.connect(self.set_operation_result)
+        # self.window.execute_button.clicked.connect(self.set_operation_result)
         self.window.hrox_path_button.clicked.connect(self.open_file_dialog)
         self.window.interrupt_button.clicked.connect(self.interrupt_copy)
         self.window.resume_button.clicked.connect(self.resume_copy)
         self.window.file_table.customContextMenuRequested.connect(self.show_context_menu)
         self.window.ip_config.clicked.connect(self.modify_connection)
         self.get_drivers()
-        # self.show_drive_space()
+        self.window.send_button.clicked.connect(self.test_slot)
+
+        self.window.listen_checkbox.stateChanged.connect(self.toggle_listen_server_responses)
 
     def show_context_menu(self, position):
         menu = QMenu()
@@ -146,19 +158,11 @@ class mainWindow_function():
             self.window.file_table.setItem(row_position, 1, QTableWidgetItem(new_path))
             self.window.file_table.setItem(row_position, 2, QTableWidgetItem("Waiting..."))
 
-        # # 在文件同目录下导出CSV文件，文件名为{hrox文件名}_taskconfig.csv
-        # hrox_base_name = os.path.basename(self.window.hrox_path_lineEdit.text())
-        # csv_file_name = os.path.splitext(hrox_base_name)[0] + "_taskconfig.csv"
-        # self.csv_file_path = os.path.join(os.path.dirname(self.window.hrox_path_lineEdit.text()), csv_file_name)
-        #
-        # self.export_to_csv(self.csv_file_path)
-        # self.send_file()
-
     def local_path(self, path):
         new_drive = self.window.drives_combobox.currentText().split(":")[0]
         parts = path.split(':')
         if len(parts) > 1:
-            return new_drive + parts[1]
+            return new_drive + ":" + parts[1]
         else:
             pass
 
@@ -171,9 +175,11 @@ class mainWindow_function():
 
     def get_drivers(self):
         # 获取盘符列表
-        drivers = self.drivers
+        # drivers = self.drivers
+        drivers = []
         if not drivers:
-            self.window.drives_combobox.addItems("C:/")
+            drivers = ["C:/"]
+            self.window.drives_combobox.addItems(drivers)
         else:
             # 将盘符加入到 QComboBox 中
             self.window.drives_combobox.clear()  # 清空之前的内容
@@ -240,43 +246,84 @@ class mainWindow_function():
         self.window.total_drive_space_text.setText(f"总容量:{total_space_tb_text} TB")
         self.window.drive_space_text.setText(f"可用:{available_space_tb_text} TB")
 
-    def send_file(self):
-        if not self.csv_file_path:
-            print("CSV 文件路径未定义。请先导出 CSV 文件。")
-            return
-        # # 发送文件名和文件大小
-        # file_name = os.path.basename(self.csv_file_path)
-        file_size = os.path.getsize(self.csv_file_path)
-        # #
-        print(file_size)
-        self.tcp_client.stream.sendall(str("DATA_LENGTH " + str(file_size)).encode("utf-8"))
-        time.sleep(0.01)
-        # 发送文件内容
-        with open(self.csv_file_path, 'rb') as file:
-            bytes_sent = 0
-            chunk_prefix = b"CHUNK|"
-            while bytes_sent < file_size:
-                bytes_read = file.read(4096 - len(chunk_prefix))
-                if not bytes_read:
-                    break
-                send_value = chunk_prefix + bytes_read
-                self.tcp_client.stream.sendall(send_value)
-                bytes_sent += len(bytes_read)
-                # print(f"已发送: {bytes_sent}/{file_size} 字节，内容: {send_value.decode('utf-8', errors='ignore')}")
+    # def send_file(self):
+    #     with open(self.json_file_path, "r", encoding="utf-8") as json_file:
+    #         send_dicts = json.load(json_file)
+    #     # 将整个文件内容作为JSON字符串
+    #     json_data = json.dumps(send_dicts).encode("utf-8")
+    #     # 发送JSON数据的长度
+    #     data_length = len(json_data)
+    #     print(data_length)
+    #     self.tcp_client.stream.sendall(str("DATA_LENGTH " + str(data_length)).encode("utf-8"))
+    #     time.sleep(0.01)
+    #
+    #     # 分块发送JSON数据a
+    #     self.send_data_in_chunks(self.tcp_client.stream, json_data)
+    #     print("JSON data sent successfully.")
+    def send_file_in_thread(self):
+        self.file_sender = FileSender(self.tcp_client, self.json_file_path)
+        self.file_sender.update_line_signal.connect(self.on_update_line)
+        self.file_sender.finished_signal.connect(self.on_finished)
+        self.file_sender.start()
 
-        print("文件发送完毕")
+    def export_to_json(self, file_name):
+        data = []
+        for row in range(self.window.file_table.rowCount()):
+            row_data = {}
+            item_src = self.window.file_table.item(row, 0)
+            item_target = self.window.file_table.item(row, 1)
+            row_data['src'] = item_src.text() if item_src else ''
+            if item_target:
+                target_path = item_target.text().replace("\\\\", "//").replace("\\", "/")
+            else:
+                target_path = ''
+            row_data['target'] = target_path
+            data.append(row_data)
 
-    def export_to_csv(self, file_name):
-        with open(file_name, 'w', newline='') as file:
-            writer = csv.writer(file, delimiter='|')
-            for row in range(self.window.file_table.rowCount()):
-                row_data = []
-                for column in range(2):
-                    item = self.window.file_table.item(row, column)
-                    row_data.append(item.text() if item else '')
-                writer.writerow(row_data)
+        with open(file_name, "w+", encoding="utf-8") as file:
+            json.dump(data, file)
+
         print(f"表格内容已导出到 {file_name}")
 
     def test_slot(self):
-        a = self.drive_space
-        print(a)
+        hrox_base_name = os.path.basename(self.window.hrox_path_lineEdit.text())
+        json_file_name = os.path.splitext(hrox_base_name)[0] + "_taskconfig.json"
+        self.json_file_path = os.path.join(os.path.dirname(self.window.hrox_path_lineEdit.text()), json_file_name)
+        self.export_to_json(self.json_file_path)
+        self.send_file_in_thread()
+
+    # def send_data_in_chunks(self, sock, data, chunk_size=2048):
+    #     listener = rl(sock)
+    #     listener.start()
+    #     start = 0
+    #     while start < len(data):
+    #         end = start + chunk_size
+    #         print(b"CHUNK|" + data[start: end])
+    #         sock.sendall(b"CHUNK|" + data[start:end])
+    #         start = end
+    #         time.sleep(0.1)  # 添加小的延时
+    #
+    #
+    #     listener.wait()
+
+    def on_update_line(self, line):
+        pass
+
+    def on_finished(self):
+        print("服务器处理完毕")
+
+    def toggle_listen_server_responses(self, state):
+        if state == Qt.Checked:
+            self.start_listening()
+        else:
+            self.stop_listening()
+
+    def start_listening(self):
+        self.listener = rl(self.tcp_client.stream)
+        # self.listener.update_line_signal.connect(self.on_update_line)
+        self.listener.finished_signal.connect(self.on_finished)
+        self.listener.start()
+
+    def stop_listening(self):
+        if hasattr(self, 'listener'):
+            self.listener.stop_listening()
