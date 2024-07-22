@@ -89,20 +89,9 @@ class ReviewClient:
     def is_connected(self):
         return self.check_socket_alive()
 
-    def check_socket_alive(sock):
-        # # Method 1: Using select to check for readability
-        # try:
-        #     readable, _, _ = select.select([sock], [], [], 0)
-        #     if readable:
-        #         data = sock.stream.recv(1024, socket.MSG_PEEK)
-        #         if len(data) == 0:
-        #             return False  # Connection closed
-        # except Exception as e:
-        #     return False  # Some error occurred
-
-        # Method 2: Sending a heartbeat
+    def check_socket_alive(self):
         try:
-            sock.stream.send(b'\0')
+            self.stream.send(b'\0')
         except socket.error as e:
             if e.errno == errno.ECONNRESET or e.errno == errno.EPIPE:
                 return False  # Connection reset or broken pipe

@@ -1,7 +1,7 @@
 from PySide2.QtCore import Qt
 from PySide2.QtWidgets import QWidget, QLabel, QLineEdit, QPushButton, QTableWidget, QAbstractItemView, QHeaderView, \
     QComboBox, QProgressBar, QVBoxLayout, QHBoxLayout, QCheckBox
-
+from ui.utils.signal_light import SignalLight
 
 class Convert_Window(QWidget):
     def __init__(self):
@@ -75,6 +75,8 @@ class Convert_Window(QWidget):
 
         self.listen_checkbox = QCheckBox("Listen")
         # self.listen_checkbox.setChecked(True)
+
+        self.connect_signal_light = SignalLight()
     def init_layout(self):
         main_layout = QVBoxLayout()
 
@@ -87,11 +89,16 @@ class Convert_Window(QWidget):
         interrupt_layout.addWidget(self.interrupt_button)
         interrupt_layout.addWidget(self.resume_button)
 
+        ip_connect_layout = QHBoxLayout()
+        ip_connect_layout.addWidget(self.connect_signal_light)
+        ip_connect_layout.addWidget(self.ip_config)
+
+
         button_layout = QVBoxLayout()
         button_Widget = QWidget()
         button_Widget.setLayout(button_layout)
         button_Widget.setFixedWidth(200)
-        button_layout.addWidget(self.ip_config)
+        button_layout.addLayout(ip_connect_layout)
         button_layout.addWidget(self.drives_combobox)
         button_layout.addWidget(self.get_path_button)
         button_layout.addWidget(self.execute_button)

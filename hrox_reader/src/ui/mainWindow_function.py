@@ -245,20 +245,6 @@ class mainWindow_function():
         self.window.total_drive_space_text.setText(f"总容量:{total_space_tb_text} TB")
         self.window.drive_space_text.setText(f"可用:{available_space_tb_text} TB")
 
-    # def send_file(self):
-    #     with open(self.json_file_path, "r", encoding="utf-8") as json_file:
-    #         send_dicts = json.load(json_file)
-    #     # 将整个文件内容作为JSON字符串
-    #     json_data = json.dumps(send_dicts).encode("utf-8")
-    #     # 发送JSON数据的长度
-    #     data_length = len(json_data)
-    #     print(data_length)
-    #     self.tcp_client.stream.sendall(str("DATA_LENGTH " + str(data_length)).encode("utf-8"))
-    #     time.sleep(0.01)
-    #
-    #     # 分块发送JSON数据a
-    #     self.send_data_in_chunks(self.tcp_client.stream, json_data)
-    #     print("JSON data sent successfully.")
     def send_file_in_thread(self):
         self.file_sender = FileSender(self.tcp_client, self.json_file_path)
         # self.file_sender.update_line_signal.connect(self.on_update_line)
@@ -291,20 +277,6 @@ class mainWindow_function():
         self.export_to_json(self.json_file_path)
         self.send_file_in_thread()
 
-    # def send_data_in_chunks(self, sock, data, chunk_size=2048):
-    #     listener = rl(sock)
-    #     listener.start()
-    #     start = 0
-    #     while start < len(data):
-    #         end = start + chunk_size
-    #         print(b"CHUNK|" + data[start: end])
-    #         sock.sendall(b"CHUNK|" + data[start:end])
-    #         start = end
-    #         time.sleep(0.1)  # 添加小的延时
-    #
-    #
-    #     listener.wait()
-
     def on_finished(self):
         print("服务器处理完毕")
 
@@ -324,21 +296,27 @@ class mainWindow_function():
         if hasattr(self, 'listener'):
             self.listener.stop_listening()
 
-
     def start_timers(self):
         # 创建一个定时器，每5秒检查一次连接状态
         self.connection_timer = QTimer(self.window)
         self.connection_timer.timeout.connect(self.check_connection)
-        self.connection_timer.start(2000)  # 5秒检查一次
+        self.connection_timer.start(500)
 
     def check_connection(self):
         if not self.tcp_client.is_connected():
+            connected = False
             try:
                 self.tcp_client = RC(self.ip, self.port)
-                # QMessageBox.information(self.window, "连接状态", "连接已重新建立")
-                print("连接已重新建立")
+                if self.tcp_client.is_connected():
+                    print("连接已重新建立")
+                    connected = True
+                else:
+                    print("重新连接失败")
+                    connected = False
             except Exception as e:
-                # QMessageBox.warning(self.window, "连接状态", f"重新连接失败: {e}")
                 print(f"重新连接失败: {e}")
+                connected = False
         else:
-            print("连接正常")
+            connected = True
+
+        self.window.connect_signal_light.set_status(connected)
