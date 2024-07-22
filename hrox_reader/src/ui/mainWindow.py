@@ -74,6 +74,7 @@ class Convert_Window(QWidget):
         self.send_button = QPushButton("Send")
 
         self.listen_checkbox = QCheckBox("Listen")
+        # self.listen_checkbox.setChecked(True)
     def init_layout(self):
         main_layout = QVBoxLayout()
 

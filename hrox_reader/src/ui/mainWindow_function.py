@@ -1,13 +1,11 @@
 import json
 import os
 import re
-import socket
 import subprocess
 import sys
-import time
 from datetime import datetime
 
-from PySide2.QtCore import Qt
+from PySide2.QtCore import Qt, QTimer
 from PySide2.QtWidgets import QTableWidgetItem, QMessageBox, QApplication, QFileDialog, QMenu, QAction, QDialog
 
 from tcp_connect import ReviewClient as RC
@@ -24,17 +22,18 @@ class mainWindow_function():
 
         self.ipd = ip_dialog(mainWindow)
         if self.ipd.exec_() == QDialog.Accepted:
-            ip, port = self.ipd.get_ip_port()
+            self.ip, self.port = self.ipd.get_ip_port()
         else:
             sys.exit()
 
-        self.tcp_client = RC(ip, port)
+        self.tcp_client = RC(self.ip, self.port)
         # self.listener = rl(self.tcp_client.stream)
 
         self.window = mainWindow
         self.window.function_instance = self
         self.connect_signals()
-        # self.show_drive_space()
+        self.start_timers()
+        self.show_drive_space()
 
     def show_info(self, title, message):
         new_notification = info(title, message)
@@ -220,10 +219,10 @@ class mainWindow_function():
         self.ipd.set_defaults(current_ip, current_port)
 
         if self.ipd.exec_() == QDialog.Accepted:
-            ip, port = self.ipd.get_ip_port()
+            self.ip, self.port = self.ipd.get_ip_port()
             self.tcp_client.close()
-            self.tcp_client = RC(ip, port)
-            QMessageBox.information(self.window, "连接信息", f"已连接到 {ip}:{port}")
+            self.tcp_client = RC(self.ip, self.port)
+            QMessageBox.information(self.window, "连接信息", f"已连接到 {self.ip}:{self.port}")
         else:
             pass
 
@@ -262,7 +261,7 @@ class mainWindow_function():
     #     print("JSON data sent successfully.")
     def send_file_in_thread(self):
         self.file_sender = FileSender(self.tcp_client, self.json_file_path)
-        self.file_sender.update_line_signal.connect(self.on_update_line)
+        # self.file_sender.update_line_signal.connect(self.on_update_line)
         self.file_sender.finished_signal.connect(self.on_finished)
         self.file_sender.start()
 
@@ -306,9 +305,6 @@ class mainWindow_function():
     #
     #     listener.wait()
 
-    def on_update_line(self, line):
-        pass
-
     def on_finished(self):
         print("服务器处理完毕")
 
@@ -321,9 +317,28 @@ class mainWindow_function():
     def start_listening(self):
         self.listener = rl(self.tcp_client.stream)
         # self.listener.update_line_signal.connect(self.on_update_line)
-        self.listener.finished_signal.connect(self.on_finished)
+        # self.listener.finished_signal.connect(self.on_finished)
         self.listener.start()
 
     def stop_listening(self):
         if hasattr(self, 'listener'):
             self.listener.stop_listening()
+
+
+    def start_timers(self):
+        # 创建一个定时器，每5秒检查一次连接状态
+        self.connection_timer = QTimer(self.window)
+        self.connection_timer.timeout.connect(self.check_connection)
+        self.connection_timer.start(2000)  # 5秒检查一次
+
+    def check_connection(self):
+        if not self.tcp_client.is_connected():
+            try:
+                self.tcp_client = RC(self.ip, self.port)
+                # QMessageBox.information(self.window, "连接状态", "连接已重新建立")
+                print("连接已重新建立")
+            except Exception as e:
+                # QMessageBox.warning(self.window, "连接状态", f"重新连接失败: {e}")
+                print(f"重新连接失败: {e}")
+        else:
+            print("连接正常")

@@ -18,9 +18,9 @@ class ServerResponseListener(QThread):
                 if response:
                     state = response.decode('utf-8')
                     print(f"服务器响应: {state}")
-                    if state.startswith("Processed line"):
-                        line_number = int(state.split()[-1])
+                    if state.startswith("TargetPathIsExistsWarning"):
                         # self.update_line_signal.emit(line_number)
+                        print(state)
                     elif state == "AllChunkFinish":
                         print("服务器处理完毕")
                         # self.finished_signal.emit()
