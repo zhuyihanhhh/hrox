@@ -21,6 +21,8 @@ class ServerResponseListener(QThread):
                     if state.startswith("TargetPathIsExistsWarning"):
                         # self.update_line_signal.emit(line_number)
                         print(state)
+                    # elif "Unknow request" in state:
+                    #     pass
                     elif state == "AllChunkFinish":
                         print("服务器处理完毕")
                         # self.finished_signal.emit()
@@ -37,7 +39,7 @@ class ServerResponseListener(QThread):
 
     def stop_listening(self):
         self.running = False
-        self.wait()  # 确保线程正确停止
+        # self.wait()  # 确保线程正确停止
 
 class FileSender(QThread):
     update_line_signal = Signal(int)

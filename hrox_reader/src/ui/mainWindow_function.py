@@ -300,7 +300,7 @@ class mainWindow_function():
         # 创建一个定时器，每5秒检查一次连接状态
         self.connection_timer = QTimer(self.window)
         self.connection_timer.timeout.connect(self.check_connection)
-        self.connection_timer.start(500)
+        self.connection_timer.start(1000)
 
     def check_connection(self):
         if not self.tcp_client.is_connected():
