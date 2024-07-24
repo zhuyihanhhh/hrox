@@ -77,6 +77,8 @@ class Convert_Window(QWidget):
         # self.listen_checkbox.setChecked(True)
 
         self.connect_signal_light = SignalLight()
+
+        self.testbutton = QPushButton("Test")
     def init_layout(self):
         main_layout = QVBoxLayout()
 
@@ -105,6 +107,7 @@ class Convert_Window(QWidget):
         button_layout.addWidget(self.send_button)
         button_layout.addWidget(self.listen_checkbox)
         button_layout.addLayout(interrupt_layout)
+        button_layout.addWidget(self.testbutton)
 
         h_layout = QHBoxLayout()
         h_layout.addWidget(self.file_table)

@@ -34,15 +34,18 @@ class ReviewClient:
 
     @property
     def get_drivers(self):
-        key_word = 'get_driver'
+
+        key_word = 'GET_DRIVER'
         self.stream.send(key_word.encode('utf-8'))
+        print("开始获取信息")
         while True:
             data = self.stream.recv(4096)
+            print(data.decode('utf-8'))
             if not data:
                 break
             else:
                 drivers = data.decode('utf-8')
-                # print(drivers)
+                print(drivers)
                 return drivers
 
     # def send_clip(self):
@@ -60,7 +63,7 @@ class ReviewClient:
     #                 print(f"{path}不存在")
 
     def copy_clip(self, clip_path, new_path):
-        cp_command = f'cp {clip_path} {new_path}'
+        cp_command = f'CP {clip_path}|{new_path}'
         self.stream.send(cp_command.encode('utf-8'))
         print(cp_command)
         # time.sleep(0.1)
@@ -77,7 +80,7 @@ class ReviewClient:
 
     @property
     def get_drive_space(self):
-        _command = 'get_free_space'
+        _command = 'GET_DRIVE_SPACE'
         self.stream.send(_command.encode('utf-8'))
         data = self.stream.recv(4096)
         if not data:

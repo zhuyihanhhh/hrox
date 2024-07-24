@@ -28,7 +28,6 @@ class mainWindow_function():
 
         self.tcp_client = RC(self.ip, self.port)
         # self.listener = rl(self.tcp_client.stream)
-
         self.window = mainWindow
         self.window.function_instance = self
         self.connect_signals()
@@ -44,7 +43,7 @@ class mainWindow_function():
         # self.listener.finished_signal.connect(self.on_finished)
 
         self.window.get_path_button.clicked.connect(self.set_paths)
-        # self.window.execute_button.clicked.connect(self.set_operation_result)
+        self.window.execute_button.clicked.connect(self.set_operation_result)
         self.window.hrox_path_button.clicked.connect(self.open_file_dialog)
         self.window.interrupt_button.clicked.connect(self.interrupt_copy)
         self.window.resume_button.clicked.connect(self.resume_copy)
@@ -52,8 +51,9 @@ class mainWindow_function():
         self.window.ip_config.clicked.connect(self.modify_connection)
         self.get_drivers()
         self.window.send_button.clicked.connect(self.test_slot)
-
         self.window.listen_checkbox.stateChanged.connect(self.toggle_listen_server_responses)
+
+        self.window.testbutton.clicked.connect(self.add_row)
 
     def show_context_menu(self, position):
         menu = QMenu()
@@ -66,13 +66,17 @@ class mainWindow_function():
         open_folder_action.triggered.connect(self.open_folder)
         menu.addAction(open_folder_action)
 
+        check_action = QAction("检查文件", self.window)
+        check_action.triggered.connect(self.check_file)
+        menu.addAction(check_action)
+
         menu.exec_(self.window.file_table.viewport().mapToGlobal(position))
 
     def open_file(self):
         current_item = self.window.file_table.currentItem()
         if current_item:
             # row = self.window.file_table.currentRow()
-            file_path = current_item.text()  # 假设文件路径在第2列
+            file_path = current_item.text().replace("/", "\\")  # 假设文件路径在第2列
             if os.path.exists(file_path):
                 subprocess.Popen(['start', file_path],
                                  shell=True)  # 使用默认程序打开文件（Windows: 'start', macOS: 'open', Linux: 'xdg-open'）
@@ -145,7 +149,7 @@ class mainWindow_function():
 
     def set_paths(self):
         paths = self.file_path
-
+        print(paths)
         self.window.file_table.clearContents()
         self.window.file_table.setRowCount(0)
 
@@ -160,8 +164,11 @@ class mainWindow_function():
     def local_path(self, path):
         new_drive = self.window.drives_combobox.currentText().split(":")[0]
         parts = path.split(':')
-        if len(parts) > 1:
+        print(path)
+        if len(parts) > 1 and not str(new_drive).startswith(r"\\"):
             return new_drive + ":" + parts[1]
+        elif str(new_drive).startswith(r"\\"):
+            return new_drive + parts[1]
         else:
             pass
 
@@ -174,8 +181,9 @@ class mainWindow_function():
 
     def get_drivers(self):
         # 获取盘符列表
-        # drivers = self.drivers
-        drivers = []
+        drivers = self.drivers
+        print(drivers)
+        # drivers = []
         if not drivers:
             drivers = ["C:/"]
             self.window.drives_combobox.addItems(drivers)
@@ -186,7 +194,7 @@ class mainWindow_function():
 
     @property
     def drivers(self):
-        drivers = self.tcp_client.get_drivers.replace("Driver:", "").split("|")
+        drivers = self.tcp_client.get_drivers.replace("Drivers:", "").replace("\n", "").split("|")
         print(drivers)
         return drivers
 
@@ -207,6 +215,8 @@ class mainWindow_function():
                     # pass
                 else:
                     paths.append(i)
+            else:
+                paths.append(i)
         return paths
 
     @property
@@ -320,3 +330,33 @@ class mainWindow_function():
             connected = True
 
         self.window.connect_signal_light.set_status(connected)
+
+    def add_row(self):
+        src_path = "D:/Users/Administrator/Desktop/test.txt"
+
+        row_position = self.window.file_table.rowCount()
+        self.window.file_table.insertRow(row_position)
+        self.window.file_table.setItem(row_position, 0, QTableWidgetItem(src_path))
+        new_path = self.local_path(src_path)
+        self.window.file_table.setItem(row_position, 1, QTableWidgetItem(new_path))
+        self.window.file_table.setItem(row_position, 2, QTableWidgetItem("Waiting..."))
+
+
+    def check_file(self):
+        current_items = self.window.file_table.selectedItems()
+        exist_paths = []
+        not_exist_paths = []
+        for item in current_items:
+            if os.path.exists(item.text()):
+                exist_paths.append(item.text())
+                item.setBackground(Qt.green)
+            else:
+                not_exist_paths.append(item.text())
+                item.setBackground(Qt.red)
+
+        message = ""
+
+        if not_exist_paths:
+            message += "以下文件不存在:\n" + "\n".join(not_exist_paths)
+
+        QMessageBox.information(self.window, "文件检查结果", message)

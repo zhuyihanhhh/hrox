@@ -1,3 +1,4 @@
+import time
 from datetime import datetime
 
 from PySide2.QtCore import Signal, QThread
@@ -28,21 +29,20 @@ class CopyWorker(QThread):
             original_path = self.file_table.item(row, 0)
             new_path = self.file_table.item(row, 1).text()
             if original_path:
+                time.sleep(0.01)
                 original_path = original_path.text()
                 self.update_status.emit(row, "Checking...", QColor("yellow"))
                 state = self.tcp_client.copy_clip(original_path, new_path)
                 current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                print(state)
-                print(current_time)
-                if state == "copy finish":
+                if str(state).startswith("COPY"):
                     result_str = "Success"
                     result_color = QColor("green")
                     self.update_status.emit(row, result_str, result_color)
-                elif state == "Error: src path is not exists":
+                elif str(state).startswith("Path is not exists:"):
                     result_str = "Error: Path not exists"
                     result_color = QColor("red")
                     self.update_status.emit(row, result_str, result_color)
-                elif state == "Warn: Target path is already exists":
+                elif str(state).startswith("Path is exists:"):
                     result_str = "Path Exists"
                     result_color = QColor("yellow")
                     self.update_status.emit(row, result_str, result_color)

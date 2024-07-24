@@ -21,8 +21,6 @@ class ServerResponseListener(QThread):
                     if state.startswith("TargetPathIsExistsWarning"):
                         # self.update_line_signal.emit(line_number)
                         print(state)
-                    # elif "Unknow request" in state:
-                    #     pass
                     elif state == "AllChunkFinish":
                         print("服务器处理完毕")
                         # self.finished_signal.emit()
@@ -39,7 +37,7 @@ class ServerResponseListener(QThread):
 
     def stop_listening(self):
         self.running = False
-        # self.wait()  # 确保线程正确停止
+        self.wait()  # 确保线程正确停止
 
 class FileSender(QThread):
     update_line_signal = Signal(int)
@@ -56,9 +54,8 @@ class FileSender(QThread):
     def send_file(self):
         with open(self.json_file_path, "r", encoding="utf-8") as json_file:
             send_dicts = json.load(json_file)
-        json_data = json.dumps(send_dicts).encode("utf-8")
+        json_data = json.dumps(send_dicts).replace(" ", "").encode("utf-8")
         data_length = len(json_data)
-        print(data_length)
         self.tcp_client.stream.sendall(str("DATA_LENGTH " + str(data_length)).encode("utf-8"))
         time.sleep(0.01)
         self.send_data_in_chunks(self.tcp_client.stream, json_data)
@@ -70,8 +67,7 @@ class FileSender(QThread):
         start = 0
         while start < len(data):
             end = start + chunk_size
-            print(b"CHUNK|" + data[start:end])
-            sock.sendall(b"CHUNK|" + data[start:end])
+            sock.sendall(b"CHUNK " + data[start:end])
             start = end
             time.sleep(0.1)
 
